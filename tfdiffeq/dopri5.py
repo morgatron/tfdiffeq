@@ -50,13 +50,14 @@ class Dopri5Solver(AdaptiveStepsizeODESolver):
     def __init__(
             self, func, y0, rtol, atol, first_step=None, safety=0.9, ifactor=10.0, dfactor=0.2,
             max_num_steps=2 ** 31 - 1,
-            tableau=None, **unused_kwargs
+            tableau=None,max_step_size=1e5, **unused_kwargs
     ):
         _handle_unused_kwargs(self, unused_kwargs)
         del unused_kwargs
 
         self.func = func
         self.y0 = y0
+        self.max_step_size= _convert_to_tensor(max_step_size, dtype=tf.float64, device=y0[0].device)
         self.rtol = rtol if _is_iterable(rtol) else [rtol] * len(y0)
         self.atol = atol if _is_iterable(atol) else [atol] * len(y0)
         self.first_step = first_step
@@ -114,8 +115,10 @@ class Dopri5Solver(AdaptiveStepsizeODESolver):
         f_next = f1 if accept_step else f0
         t_next = t0 + dt if accept_step else t0
         interp_coeff = _interp_fit_dopri5(y0, y1, k, dt) if accept_step else interp_coeff
-        dt_next = _optimal_step_size(
+        dt_next0 = _optimal_step_size(
             dt, mean_sq_error_ratio, safety=self.safety, ifactor=self.ifactor, dfactor=self.dfactor, order=self.order
         )
+        dt_next = tf.reduce_min([dt_next0, self.max_step_size])
+        #tf.print(dt_next)
         rk_state = _RungeKuttaState(y_next, f_next, t0, t_next, dt_next, interp_coeff)
         return rk_state

@@ -61,7 +61,7 @@ class FixedGridODESolver(object):
             start_time = t[0]
             end_time = t[-1]
 
-            niters = tf.ceil((end_time - start_time) / step_size + 1).item()
+            niters = tf.math.ceil((end_time - start_time) / step_size + 1)#.item()
             t_infer = move_to_device(tf.range(0, niters), t) * step_size + start_time
             if t_infer[-1] > t[-1]:
                 t_infer[-1] = t[-1]
